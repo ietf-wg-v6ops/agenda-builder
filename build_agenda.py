@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import csv
 import re
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 DURATION_RE = re.compile(r"(\d+)")
 URL_RE = re.compile(r"https?://\S+")
@@ -72,3 +74,22 @@ def split_sections(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     wg_rows = [r for r in rows if r["adopted"]]
     individual_rows = [r for r in rows if not r["adopted"]]
     return wg_rows, individual_rows
+
+
+def compute_local_time_window(
+    start_utc_iso: str, duration_hms: str, tz_name: str
+) -> tuple[str, str, str]:
+    start_utc = datetime.fromisoformat(start_utc_iso.replace("Z", "+00:00"))
+    hours_str, minutes_str, seconds_str = duration_hms.split(":")
+    duration = timedelta(
+        hours=int(hours_str), minutes=int(minutes_str), seconds=int(seconds_str)
+    )
+
+    tz = ZoneInfo(tz_name)
+    start_local = start_utc.astimezone(tz)
+    end_local = start_local + duration
+
+    weekday = start_local.strftime("%a")
+    start_str = f"{start_local.hour}:{start_local.minute:02d}"
+    end_str = f"{end_local.hour}:{end_local.minute:02d}"
+    return weekday, start_str, end_str

@@ -2,7 +2,13 @@ import os
 
 import pytest
 
-from build_agenda import format_duration, extract_draft_url, parse_csv_rows, split_sections
+from build_agenda import (
+    format_duration,
+    extract_draft_url,
+    parse_csv_rows,
+    split_sections,
+    compute_local_time_window,
+)
 
 
 def test_format_duration_minutes():
@@ -78,3 +84,17 @@ def test_split_sections():
         "Enhanced Dual Stack: Selecting IPv6/IPv4 based on Performance",
         "CGNATs: early observations from a CDN about performance, and prevalence in v6 networks",
     ]
+
+
+def test_compute_local_time_window_shanghai_no_leading_zero():
+    weekday, start, end = compute_local_time_window(
+        "2026-03-16T01:00:00Z", "2:00:00", "Asia/Shanghai"
+    )
+    assert (weekday, start, end) == ("Mon", "9:00", "11:00")
+
+
+def test_compute_local_time_window_two_digit_hour():
+    weekday, start, end = compute_local_time_window(
+        "2026-03-16T05:00:00Z", "1:30:00", "Asia/Shanghai"
+    )
+    assert (weekday, start, end) == ("Mon", "13:00", "14:30")

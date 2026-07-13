@@ -233,10 +233,12 @@ def test_render_agenda_full_document():
         group_name="IPv6 Operations",
         group_acronym="v6ops",
         meeting=126,
+        session_id=35105,
         weekday="Mon",
         start="9:00",
         end="11:00",
         location="Grand Ballroom 1",
+        minute_taker="Jane Doe",
         chairs_item="Chairs Opening and WG status, 10m",
         wg_rows=wg_rows,
         individual_rows=individual_rows,
@@ -246,7 +248,10 @@ def test_render_agenda_full_document():
         "\n"
         "Mon. 9:00-11:00, Grand Ballroom 1\n"
         "\n"
-        "[Meetecho link](https://meetecho.ietf.org/conference/?group=v6ops)\n"
+        "[Meetecho (Full Client)](https://meetings.conf.meetecho.com/ietf126/?session=35105)\n"
+        "[Meetecho (Onsite Tool)](https://meetings.conf.meetecho.com/onsite126/?session=35105)\n"
+        "\n"
+        "Minute taker: Jane Doe\n"
         "\n"
         "* Chairs Opening and WG status, 10m\n"
         "\n"
@@ -267,10 +272,12 @@ def test_render_agenda_omits_empty_section():
         group_name="IPv6 Operations",
         group_acronym="v6ops",
         meeting=126,
+        session_id=35105,
         weekday="Mon",
         start="9:00",
         end="11:00",
         location="Grand Ballroom 1",
+        minute_taker="TBD",
         chairs_item="Chairs Opening and WG status, 10m",
         wg_rows=[],
         individual_rows=[],
@@ -296,6 +303,7 @@ def test_main_end_to_end(monkeypatch, tmp_path):
                         "location": "Grand Ballroom 1",
                         "start": "2026-03-16T01:00:00Z",
                         "duration": "2:00:00",
+                        "session_id": 35105,
                     }
                 ]
             }
@@ -319,6 +327,15 @@ def test_main_end_to_end(monkeypatch, tmp_path):
     content = output_path.read_text(encoding="utf-8")
     assert content.startswith("# IPv6 Operations (v6ops) - IETF 126 Agenda\n")
     assert "Mon. 9:00-11:00, Grand Ballroom 1" in content
+    assert (
+        "[Meetecho (Full Client)](https://meetings.conf.meetecho.com/ietf126/?session=35105)"
+        in content
+    )
+    assert (
+        "[Meetecho (Onsite Tool)](https://meetings.conf.meetecho.com/onsite126/?session=35105)"
+        in content
+    )
+    assert "Minute taker: TBD" in content
     assert "## WG Drafts" in content
     assert "## Individual Drafts" in content
 

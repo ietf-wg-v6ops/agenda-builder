@@ -38,6 +38,7 @@ This:
 | `--group` | no | `v6ops` | Working group acronym — drives the datatracker lookup and the Meetecho link, so this script works for any WG's CSV, not just v6ops |
 | `--output` | no | `agenda-{meeting}-{group}.md` | Output markdown file path |
 | `--chairs-item` | no | `Chairs Opening and WG status, 10m` | Text for the fixed opening bullet, before any drafts |
+| `--minute-taker` | no | `TBD` | Name of the minute taker |
 
 ### Example: a different working group
 
@@ -69,7 +70,10 @@ silently skip or guess at malformed input.
 
 Mon. 9:00-11:00, Grand Ballroom 1
 
-[Meetecho link](https://meetecho.ietf.org/conference/?group=v6ops)
+[Meetecho (Full Client)](https://meetings.conf.meetecho.com/ietf126/?session=35105)
+[Meetecho (Onsite Tool)](https://meetings.conf.meetecho.com/onsite126/?session=35105)
+
+Minute taker: TBD
 
 * Chairs Opening and WG status, 10m
 

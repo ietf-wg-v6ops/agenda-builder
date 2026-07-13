@@ -18,7 +18,8 @@ import requests
 
 DATATRACKER_MEETING_API = "https://datatracker.ietf.org/api/v1/meeting/meeting/"
 DATATRACKER_AGENDA_JSON = "https://datatracker.ietf.org/meeting/{meeting}/agenda.json"
-MEETECHO_URL = "https://meetecho.ietf.org/conference/?group={group}"
+MEETECHO_FULL_URL = "https://meetings.conf.meetecho.com/ietf{meeting}/?session={session_id}"
+MEETECHO_ONSITE_URL = "https://meetings.conf.meetecho.com/onsite{meeting}/?session={session_id}"
 
 DURATION_RE = re.compile(r"(\d+)")
 URL_RE = re.compile(r"https?://\S+")
@@ -154,21 +155,27 @@ def render_agenda(
     group_name: str,
     group_acronym: str,
     meeting: int,
+    session_id: int,
     weekday: str,
     start: str,
     end: str,
     location: str,
+    minute_taker: str,
     chairs_item: str,
     wg_rows: list[dict],
     individual_rows: list[dict],
 ) -> str:
-    meetecho_url = MEETECHO_URL.format(group=group_acronym)
+    full_url = MEETECHO_FULL_URL.format(meeting=meeting, session_id=session_id)
+    onsite_url = MEETECHO_ONSITE_URL.format(meeting=meeting, session_id=session_id)
     parts = [
         f"# {group_name} ({group_acronym}) - IETF {meeting} Agenda",
         "",
         f"{weekday}. {start}-{end}, {location}",
         "",
-        f"[Meetecho link]({meetecho_url})",
+        f"[Meetecho (Full Client)]({full_url})",
+        f"[Meetecho (Onsite Tool)]({onsite_url})",
+        "",
+        f"Minute taker: {minute_taker}",
         "",
         f"* {chairs_item}",
     ]
@@ -202,6 +209,11 @@ def main(argv: list[str] | None = None) -> int:
         default="Chairs Opening and WG status, 10m",
         help="Text for the fixed opening bullet",
     )
+    parser.add_argument(
+        "--minute-taker",
+        default="TBD",
+        help="Name of the minute taker (default: TBD)",
+    )
     args = parser.parse_args(argv)
 
     output_path = args.output or f"agenda-{args.meeting}-{args.group}.md"
@@ -220,10 +232,12 @@ def main(argv: list[str] | None = None) -> int:
             group_name=session["group"]["name"],
             group_acronym=args.group,
             meeting=args.meeting,
+            session_id=session["session_id"],
             weekday=weekday,
             start=start,
             end=end,
             location=session["location"],
+            minute_taker=args.minute_taker,
             chairs_item=args.chairs_item,
             wg_rows=wg_rows,
             individual_rows=individual_rows,

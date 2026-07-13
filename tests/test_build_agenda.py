@@ -8,6 +8,8 @@ from build_agenda import (
     parse_csv_rows,
     split_sections,
     compute_local_time_window,
+    fetch_meeting_timezone,
+    fetch_group_session,
 )
 
 
@@ -109,3 +111,71 @@ def test_compute_local_time_window_dst_crossing():
         "2026-03-08T06:00:00Z", "2:00:00", "America/New_York"
     )
     assert (weekday, start, end) == ("Sun", "1:00", "4:00")
+
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._payload
+
+
+def test_fetch_meeting_timezone(monkeypatch):
+    def fake_get(url, params=None, timeout=None):
+        assert params == {"number": 126, "format": "json"}
+        return _FakeResponse({"objects": [{"time_zone": "Asia/Shanghai"}]})
+
+    monkeypatch.setattr("build_agenda.requests.get", fake_get)
+    assert fetch_meeting_timezone(126) == "Asia/Shanghai"
+
+
+def test_fetch_meeting_timezone_not_found(monkeypatch):
+    monkeypatch.setattr(
+        "build_agenda.requests.get",
+        lambda url, params=None, timeout=None: _FakeResponse({"objects": []}),
+    )
+    with pytest.raises(ValueError):
+        fetch_meeting_timezone(999)
+
+
+def test_fetch_group_session_found(monkeypatch):
+    payload = {
+        "126": [
+            {
+                "objtype": "session",
+                "group": {"acronym": "v6ops", "name": "IPv6 Operations"},
+                "location": "Grand Ballroom 1",
+                "start": "2026-03-16T01:00:00Z",
+                "duration": "2:00:00",
+            },
+            {
+                "objtype": "session",
+                "group": {"acronym": "srv6ops", "name": "SRv6 Operations"},
+                "location": "Shangri-la Ballroom 2",
+                "start": "2026-03-20T03:30:00Z",
+                "duration": "1:00:00",
+            },
+        ]
+    }
+
+    def fake_get(url, timeout=None):
+        assert url == "https://datatracker.ietf.org/meeting/126/agenda.json"
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr("build_agenda.requests.get", fake_get)
+    session = fetch_group_session(126, "v6ops")
+    assert session["location"] == "Grand Ballroom 1"
+    assert session["group"]["name"] == "IPv6 Operations"
+
+
+def test_fetch_group_session_not_found(monkeypatch):
+    monkeypatch.setattr(
+        "build_agenda.requests.get",
+        lambda url, timeout=None: _FakeResponse({"126": []}),
+    )
+    with pytest.raises(ValueError):
+        fetch_group_session(126, "v6ops")

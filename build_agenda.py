@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import csv
 import re
+import sys
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import requests
+
 DURATION_RE = re.compile(r"(\d+)")
 URL_RE = re.compile(r"https?://\S+")
+
+DATATRACKER_MEETING_API = "https://datatracker.ietf.org/api/v1/meeting/meeting/"
+DATATRACKER_AGENDA_JSON = "https://datatracker.ietf.org/meeting/{meeting}/agenda.json"
 
 REQUIRED_COLUMNS = {
     "topic": "Draft Topic (e.g. Use of the IPv6 Flow Label for WLCG Packet Marking)",
@@ -94,3 +100,41 @@ def compute_local_time_window(
     start_str = f"{start_local.hour}:{start_local.minute:02d}"
     end_str = f"{end_local.hour}:{end_local.minute:02d}"
     return weekday, start_str, end_str
+
+
+def fetch_meeting_timezone(meeting: int) -> str:
+    response = requests.get(
+        DATATRACKER_MEETING_API,
+        params={"number": meeting, "format": "json"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    objects = response.json().get("objects") or []
+    if not objects:
+        raise ValueError(f"IETF meeting {meeting} not found on datatracker")
+    return objects[0]["time_zone"]
+
+
+def fetch_group_session(meeting: int, group: str) -> dict:
+    response = requests.get(
+        DATATRACKER_AGENDA_JSON.format(meeting=meeting), timeout=30
+    )
+    response.raise_for_status()
+    sessions = response.json().get(str(meeting)) or []
+    matches = [
+        s
+        for s in sessions
+        if s.get("objtype") == "session"
+        and s.get("group", {}).get("acronym") == group
+    ]
+    if not matches:
+        raise ValueError(
+            f"No scheduled {group} session found for IETF {meeting} yet"
+        )
+    if len(matches) > 1:
+        print(
+            f"Warning: {len(matches)} sessions found for {group} at IETF "
+            f"{meeting}; using the first one.",
+            file=sys.stderr,
+        )
+    return matches[0]

@@ -179,3 +179,101 @@ def test_fetch_group_session_not_found(monkeypatch):
     )
     with pytest.raises(ValueError):
         fetch_group_session(126, "v6ops")
+
+
+from build_agenda import render_agenda, render_bullet
+
+
+def test_render_bullet_with_url():
+    row = {
+        "topic": "IPv6 CE Router (7084bis)",
+        "presenter": "Tim Winters",
+        "duration": "10m",
+        "url": "https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7084bis/",
+        "adopted": True,
+    }
+    assert render_bullet(row) == (
+        "* IPv6 CE Router (7084bis), Tim Winters, 10m\n"
+        "  Draft: [https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7084bis/]"
+        "(https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7084bis/)"
+    )
+
+
+def test_render_bullet_without_url():
+    row = {
+        "topic": "CGNATs: early observations",
+        "presenter": "Marwan Fayed",
+        "duration": "10m",
+        "url": None,
+        "adopted": False,
+    }
+    assert render_bullet(row) == "* CGNATs: early observations, Marwan Fayed, 10m"
+
+
+def test_render_agenda_full_document():
+    wg_rows = [
+        {
+            "topic": "Stateful NAT64",
+            "presenter": "Jordi Palet",
+            "duration": "10m",
+            "url": "https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc6146-bis/",
+            "adopted": True,
+        }
+    ]
+    individual_rows = [
+        {
+            "topic": "Enhanced Dual Stack",
+            "presenter": "Xipeng Xiao",
+            "duration": "15m",
+            "url": None,
+            "adopted": False,
+        }
+    ]
+    doc = render_agenda(
+        group_name="IPv6 Operations",
+        group_acronym="v6ops",
+        meeting=126,
+        weekday="Mon",
+        start="9:00",
+        end="11:00",
+        location="Grand Ballroom 1",
+        chairs_item="Chairs Opening and WG status, 10m",
+        wg_rows=wg_rows,
+        individual_rows=individual_rows,
+    )
+    assert doc == (
+        "# IPv6 Operations (v6ops) - IETF 126 Agenda\n"
+        "\n"
+        "Mon. 9:00-11:00, Grand Ballroom 1\n"
+        "\n"
+        "[Meetecho link](https://meetecho.ietf.org/conference/?group=v6ops)\n"
+        "\n"
+        "* Chairs Opening and WG status, 10m\n"
+        "\n"
+        "## WG Drafts\n"
+        "\n"
+        "* Stateful NAT64, Jordi Palet, 10m\n"
+        "  Draft: [https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc6146-bis/]"
+        "(https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc6146-bis/)\n"
+        "\n"
+        "## Individual Drafts\n"
+        "\n"
+        "* Enhanced Dual Stack, Xipeng Xiao, 15m\n"
+    )
+
+
+def test_render_agenda_omits_empty_section():
+    doc = render_agenda(
+        group_name="IPv6 Operations",
+        group_acronym="v6ops",
+        meeting=126,
+        weekday="Mon",
+        start="9:00",
+        end="11:00",
+        location="Grand Ballroom 1",
+        chairs_item="Chairs Opening and WG status, 10m",
+        wg_rows=[],
+        individual_rows=[],
+    )
+    assert "## WG Drafts" not in doc
+    assert "## Individual Drafts" not in doc

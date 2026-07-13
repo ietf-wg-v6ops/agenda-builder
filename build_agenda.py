@@ -138,3 +138,45 @@ def fetch_group_session(meeting: int, group: str) -> dict:
             file=sys.stderr,
         )
     return matches[0]
+
+
+MEETECHO_URL = "https://meetecho.ietf.org/conference/?group={group}"
+
+
+def render_bullet(row: dict) -> str:
+    lines = [f"* {row['topic']}, {row['presenter']}, {row['duration']}"]
+    if row["url"]:
+        lines.append(f"  Draft: [{row['url']}]({row['url']})")
+    return "\n".join(lines)
+
+
+def render_agenda(
+    *,
+    group_name: str,
+    group_acronym: str,
+    meeting: int,
+    weekday: str,
+    start: str,
+    end: str,
+    location: str,
+    chairs_item: str,
+    wg_rows: list[dict],
+    individual_rows: list[dict],
+) -> str:
+    meetecho_url = MEETECHO_URL.format(group=group_acronym)
+    parts = [
+        f"# {group_name} ({group_acronym}) - IETF {meeting} Agenda",
+        "",
+        f"{weekday}. {start}-{end}, {location}",
+        "",
+        f"[Meetecho link]({meetecho_url})",
+        "",
+        f"* {chairs_item}",
+    ]
+    if wg_rows:
+        parts += ["", "## WG Drafts", ""]
+        parts.append("\n".join(render_bullet(r) for r in wg_rows))
+    if individual_rows:
+        parts += ["", "## Individual Drafts", ""]
+        parts.append("\n".join(render_bullet(r) for r in individual_rows))
+    return "\n".join(parts) + "\n"

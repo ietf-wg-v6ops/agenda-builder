@@ -1,6 +1,8 @@
+import os
+
 import pytest
 
-from build_agenda import format_duration, extract_draft_url
+from build_agenda import format_duration, extract_draft_url, parse_csv_rows, split_sections
 
 
 def test_format_duration_minutes():
@@ -23,3 +25,56 @@ def test_extract_draft_url_present():
 
 def test_extract_draft_url_absent():
     assert extract_draft_url("No draft; only sharing observations") is None
+
+
+FIXTURE_CSV = os.path.join(os.path.dirname(__file__), "fixtures", "sample.csv")
+
+
+def test_parse_csv_rows_count_and_fields():
+    rows = parse_csv_rows(FIXTURE_CSV)
+    assert len(rows) == 4
+    first = rows[0]
+    assert first["topic"] == (
+        "Stateful NAT64: Network Address and Protocol Translation "
+        "from IPv6 Clients to IPv4 Servers"
+    )
+    assert first["presenter"] == "Jordi Palet"
+    assert first["duration"] == "10m"
+    assert first["url"] == "https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc6146-bis/"
+    assert first["adopted"] is True
+
+
+def test_parse_csv_rows_no_url_row():
+    rows = parse_csv_rows(FIXTURE_CSV)
+    last = rows[-1]
+    assert last["adopted"] is False
+    assert last["url"] is None
+
+
+def test_parse_csv_rows_missing_topic_raises(tmp_path):
+    bad_csv = tmp_path / "bad.csv"
+    header = (
+        "Timestamp,Email Address,"
+        "Draft Topic (e.g. Use of the IPv6 Flow Label for WLCG Packet Marking),"
+        "Presenter Name (if someone other than requestor),Presenter Email,"
+        "URL for Draft,Time slot duration ,Adopted WG Draft?,"
+        "Additional notes for chair consideration\n"
+    )
+    row = "6/25/2026 3:25:25,a@b.com,,Jordi Palet,a@b.com,https://example.com/,10 minutes,Yes,\n"
+    bad_csv.write_text(header + row, encoding="utf-8")
+    with pytest.raises(ValueError):
+        parse_csv_rows(str(bad_csv))
+
+
+def test_split_sections():
+    rows = parse_csv_rows(FIXTURE_CSV)
+    wg_rows, individual_rows = split_sections(rows)
+    assert [r["topic"] for r in wg_rows] == [
+        "Stateful NAT64: Network Address and Protocol Translation "
+        "from IPv6 Clients to IPv4 Servers",
+        "IPv6 CE Router (7084bis)",
+    ]
+    assert [r["topic"] for r in individual_rows] == [
+        "Enhanced Dual Stack: Selecting IPv6/IPv4 based on Performance",
+        "CGNATs: early observations from a CDN about performance, and prevalence in v6 networks",
+    ]

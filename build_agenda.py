@@ -7,10 +7,19 @@
 
 from __future__ import annotations
 
+import csv
 import re
 
 DURATION_RE = re.compile(r"(\d+)")
 URL_RE = re.compile(r"https?://\S+")
+
+REQUIRED_COLUMNS = {
+    "topic": "Draft Topic (e.g. Use of the IPv6 Flow Label for WLCG Packet Marking)",
+    "presenter": "Presenter Name (if someone other than requestor)",
+    "duration": "Time slot duration",
+    "url": "URL for Draft",
+    "adopted": "Adopted WG Draft?",
+}
 
 
 def format_duration(raw: str) -> str:
@@ -23,3 +32,43 @@ def format_duration(raw: str) -> str:
 def extract_draft_url(raw: str) -> str | None:
     match = URL_RE.search(raw or "")
     return match.group(0) if match else None
+
+
+def parse_csv_rows(csv_path: str) -> list[dict]:
+    with open(csv_path, newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        header_by_stripped_name = {
+            name.strip(): name for name in (reader.fieldnames or [])
+        }
+
+        def get(raw_row: dict, column_key: str) -> str:
+            header = REQUIRED_COLUMNS[column_key]
+            actual_header = header_by_stripped_name.get(header)
+            if actual_header is None:
+                raise ValueError(f"CSV is missing required column {header!r}")
+            return (raw_row.get(actual_header) or "").strip()
+
+        rows = []
+        for line_num, raw_row in enumerate(reader, start=2):
+            topic = get(raw_row, "topic")
+            presenter = get(raw_row, "presenter")
+            if not topic or not presenter:
+                raise ValueError(
+                    f"Row {line_num}: missing topic or presenter"
+                )
+            rows.append(
+                {
+                    "topic": topic,
+                    "presenter": presenter,
+                    "duration": format_duration(get(raw_row, "duration")),
+                    "url": extract_draft_url(get(raw_row, "url")),
+                    "adopted": get(raw_row, "adopted").lower() == "yes",
+                }
+            )
+        return rows
+
+
+def split_sections(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    wg_rows = [r for r in rows if r["adopted"]]
+    individual_rows = [r for r in rows if not r["adopted"]]
+    return wg_rows, individual_rows

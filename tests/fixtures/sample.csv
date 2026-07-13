@@ -1,0 +1,5 @@
+Timestamp,Email Address,Draft Topic (e.g. Use of the IPv6 Flow Label for WLCG Packet Marking),Presenter Name (if someone other than requestor),Presenter Email,URL for Draft,Time slot duration ,Adopted WG Draft?,Additional notes for chair consideration
+6/25/2026 3:25:25,jordi.palet@theipv6company.com,Stateful NAT64: Network Address and Protocol Translation from IPv6 Clients to IPv4 Servers,Jordi Palet,jordi.palet@theipv6company.com,https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc6146-bis/,10 minutes,Yes,
+6/27/2026 13:25:37,xipengxiao@gmail.com,Enhanced Dual Stack: Selecting IPv6/IPv4 based on Performance,Xipeng Xiao,xipengxiao@gmail.com,https://datatracker.ietf.org/doc/draft-xiao-v6ops-eds/,15 minutes,No,
+7/6/2026 15:34:07,tim@qacafe.com,IPv6 CE Router (7084bis),Tim Winters,tim@qacafe.com,https://datatracker.ietf.org/doc/draft-ietf-v6ops-rfc7084bis/,10 minutes,Yes,
+7/10/2026 7:57:30,marwan@cloudflare.com,"CGNATs: early observations from a CDN about performance, and prevalence in v6 networks",Marwan Fayed,marwan@cloudflare.com,No draft; only sharing observations,10 minutes,No,

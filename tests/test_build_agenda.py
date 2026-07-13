@@ -98,3 +98,14 @@ def test_compute_local_time_window_two_digit_hour():
         "2026-03-16T05:00:00Z", "1:30:00", "Asia/Shanghai"
     )
     assert (weekday, start, end) == ("Mon", "13:00", "14:30")
+
+
+def test_compute_local_time_window_dst_crossing():
+    # Spring-forward DST transition on 2026-03-08 in America/New_York.
+    # start_utc = 2026-03-08T06:00:00Z (1:00 AM EST, before transition)
+    # end_utc = 2026-03-08T08:00:00Z (4:00 AM EDT, after 2:00 AM -> 3:00 AM jump)
+    # Wall-clock duration: 1:00 AM -> 4:00 AM = 3 hours (1 hour offset by DST)
+    weekday, start, end = compute_local_time_window(
+        "2026-03-08T06:00:00Z", "2:00:00", "America/New_York"
+    )
+    assert (weekday, start, end) == ("Sun", "1:00", "4:00")

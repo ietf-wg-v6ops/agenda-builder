@@ -86,8 +86,9 @@ def compute_local_time_window(
     )
 
     tz = ZoneInfo(tz_name)
+    end_utc = start_utc + duration
     start_local = start_utc.astimezone(tz)
-    end_local = start_local + duration
+    end_local = end_utc.astimezone(tz)
 
     weekday = start_local.strftime("%a")
     start_str = f"{start_local.hour}:{start_local.minute:02d}"

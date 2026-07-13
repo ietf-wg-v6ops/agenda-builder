@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import re
 import sys
@@ -15,11 +16,12 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-DURATION_RE = re.compile(r"(\d+)")
-URL_RE = re.compile(r"https?://\S+")
-
 DATATRACKER_MEETING_API = "https://datatracker.ietf.org/api/v1/meeting/meeting/"
 DATATRACKER_AGENDA_JSON = "https://datatracker.ietf.org/meeting/{meeting}/agenda.json"
+MEETECHO_URL = "https://meetecho.ietf.org/conference/?group={group}"
+
+DURATION_RE = re.compile(r"(\d+)")
+URL_RE = re.compile(r"https?://\S+")
 
 REQUIRED_COLUMNS = {
     "topic": "Draft Topic (e.g. Use of the IPv6 Flow Label for WLCG Packet Marking)",
@@ -140,9 +142,6 @@ def fetch_group_session(meeting: int, group: str) -> dict:
     return matches[0]
 
 
-MEETECHO_URL = "https://meetecho.ietf.org/conference/?group={group}"
-
-
 def render_bullet(row: dict) -> str:
     lines = [f"* {row['topic']}, {row['presenter']}, {row['duration']}"]
     if row["url"]:
@@ -180,3 +179,65 @@ def render_agenda(
         parts += ["", "## Individual Drafts", ""]
         parts.append("\n".join(render_bullet(r) for r in individual_rows))
     return "\n".join(parts) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Build an IETF WG session agenda from a call-for-drafts CSV."
+    )
+    parser.add_argument("--csv", required=True, help="Path to the call-for-drafts CSV")
+    parser.add_argument(
+        "--meeting", required=True, type=int, help="IETF meeting number, e.g. 126"
+    )
+    parser.add_argument(
+        "--group", default="v6ops", help="Working group acronym (default: v6ops)"
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Output markdown path (default: agenda-{meeting}-{group}.md)",
+    )
+    parser.add_argument(
+        "--chairs-item",
+        default="Chairs Opening and WG status, 10m",
+        help="Text for the fixed opening bullet",
+    )
+    args = parser.parse_args(argv)
+
+    output_path = args.output or f"agenda-{args.meeting}-{args.group}.md"
+
+    try:
+        tz_name = fetch_meeting_timezone(args.meeting)
+        session = fetch_group_session(args.meeting, args.group)
+        rows = parse_csv_rows(args.csv)
+    except (ValueError, requests.RequestException) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+
+    weekday, start, end = compute_local_time_window(
+        session["start"], session["duration"], tz_name
+    )
+    wg_rows, individual_rows = split_sections(rows)
+
+    content = render_agenda(
+        group_name=session["group"]["name"],
+        group_acronym=args.group,
+        meeting=args.meeting,
+        weekday=weekday,
+        start=start,
+        end=end,
+        location=session["location"],
+        chairs_item=args.chairs_item,
+        wg_rows=wg_rows,
+        individual_rows=individual_rows,
+    )
+
+    with open(output_path, "w", encoding="utf-8") as fh:
+        fh.write(content)
+
+    print(f"Wrote {output_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

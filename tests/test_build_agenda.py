@@ -277,3 +277,69 @@ def test_render_agenda_omits_empty_section():
     )
     assert "## WG Drafts" not in doc
     assert "## Individual Drafts" not in doc
+
+
+from build_agenda import main
+
+
+def test_main_end_to_end(monkeypatch, tmp_path):
+    def fake_get(url, params=None, timeout=None):
+        if "meeting/meeting" in url:
+            return _FakeResponse({"objects": [{"time_zone": "Asia/Shanghai"}]})
+        assert url == "https://datatracker.ietf.org/meeting/126/agenda.json"
+        return _FakeResponse(
+            {
+                "126": [
+                    {
+                        "objtype": "session",
+                        "group": {"acronym": "v6ops", "name": "IPv6 Operations"},
+                        "location": "Grand Ballroom 1",
+                        "start": "2026-03-16T01:00:00Z",
+                        "duration": "2:00:00",
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr("build_agenda.requests.get", fake_get)
+
+    output_path = tmp_path / "out.md"
+    exit_code = main(
+        [
+            "--csv",
+            FIXTURE_CSV,
+            "--meeting",
+            "126",
+            "--output",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    content = output_path.read_text(encoding="utf-8")
+    assert content.startswith("# IPv6 Operations (v6ops) - IETF 126 Agenda\n")
+    assert "Mon. 9:00-11:00, Grand Ballroom 1" in content
+    assert "## WG Drafts" in content
+    assert "## Individual Drafts" in content
+
+
+def test_main_errors_on_unscheduled_session(monkeypatch, tmp_path, capsys):
+    def fake_get(url, params=None, timeout=None):
+        if "meeting/meeting" in url:
+            return _FakeResponse({"objects": [{"time_zone": "Asia/Shanghai"}]})
+        return _FakeResponse({"126": []})
+
+    monkeypatch.setattr("build_agenda.requests.get", fake_get)
+
+    exit_code = main(
+        [
+            "--csv",
+            FIXTURE_CSV,
+            "--meeting",
+            "126",
+            "--output",
+            str(tmp_path / "out.md"),
+        ]
+    )
+    assert exit_code == 1
+    assert "No scheduled v6ops session" in capsys.readouterr().err

@@ -343,3 +343,36 @@ def test_main_errors_on_unscheduled_session(monkeypatch, tmp_path, capsys):
     )
     assert exit_code == 1
     assert "No scheduled v6ops session" in capsys.readouterr().err
+
+
+def test_main_errors_on_session_missing_start_key(monkeypatch, tmp_path, capsys):
+    def fake_get(url, params=None, timeout=None):
+        if "meeting/meeting" in url:
+            return _FakeResponse({"objects": [{"time_zone": "Asia/Shanghai"}]})
+        return _FakeResponse(
+            {
+                "126": [
+                    {
+                        "objtype": "session",
+                        "group": {"acronym": "v6ops", "name": "IPv6 Operations"},
+                        "location": "Grand Ballroom 1",
+                        "duration": "2:00:00",
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr("build_agenda.requests.get", fake_get)
+
+    exit_code = main(
+        [
+            "--csv",
+            FIXTURE_CSV,
+            "--meeting",
+            "126",
+            "--output",
+            str(tmp_path / "out.md"),
+        ]
+    )
+    assert exit_code == 1
+    assert capsys.readouterr().err.startswith("Error: ")

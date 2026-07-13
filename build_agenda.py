@@ -210,30 +210,30 @@ def main(argv: list[str] | None = None) -> int:
         tz_name = fetch_meeting_timezone(args.meeting)
         session = fetch_group_session(args.meeting, args.group)
         rows = parse_csv_rows(args.csv)
-    except (ValueError, requests.RequestException) as exc:
+
+        weekday, start, end = compute_local_time_window(
+            session["start"], session["duration"], tz_name
+        )
+        wg_rows, individual_rows = split_sections(rows)
+
+        content = render_agenda(
+            group_name=session["group"]["name"],
+            group_acronym=args.group,
+            meeting=args.meeting,
+            weekday=weekday,
+            start=start,
+            end=end,
+            location=session["location"],
+            chairs_item=args.chairs_item,
+            wg_rows=wg_rows,
+            individual_rows=individual_rows,
+        )
+
+        with open(output_path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+    except (ValueError, requests.RequestException, KeyError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
-
-    weekday, start, end = compute_local_time_window(
-        session["start"], session["duration"], tz_name
-    )
-    wg_rows, individual_rows = split_sections(rows)
-
-    content = render_agenda(
-        group_name=session["group"]["name"],
-        group_acronym=args.group,
-        meeting=args.meeting,
-        weekday=weekday,
-        start=start,
-        end=end,
-        location=session["location"],
-        chairs_item=args.chairs_item,
-        wg_rows=wg_rows,
-        individual_rows=individual_rows,
-    )
-
-    with open(output_path, "w", encoding="utf-8") as fh:
-        fh.write(content)
 
     print(f"Wrote {output_path}")
     return 0
